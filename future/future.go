@@ -36,8 +36,6 @@ type Result struct {
 	Error error
 }
 
-// Future
-//
 // A future defines the interface to a Result that is provided asynchronously
 // per the standard practice semantics of a 'future'
 //
@@ -51,17 +49,22 @@ type Future interface {
 	Set(v interface{}, e error)
 
 	// Blocks until the future Result is provided
-	//
-	Get() (r Result)
-	TryGet(ns time.Duration)
+	// REVU: should be future consumer
+	Get() (r *Result)
+
+	// Blocking call with timeout.
+	// Returns timeout value of TRUE if ns Duration elapsed; r will be nil.
+	// Returns r value if value was provided before ns timeout duration elapsed.
+	// REVU: should be future consumer
+	TryGet(ns time.Duration) (r *Result, timeout bool)
 }
 
 // ----------------------------------------------------------------------------
-// Support
+// Core support
 
-// future type is a channel of FutureResults
+// future type is a channel of future results
 // supporting the Future interface
-type future chan Result
+type future chan *Result
 
 // Create a new future
 func NewFuture() future {
@@ -70,17 +73,17 @@ func NewFuture() future {
 
 // Future#Set support
 func (f future) Set(v interface{}, e error) {
-	f <- Result{v, e}
+	f <- &Result{v, e}
 }
 
 // Future#Get support
-func (f future) Get() (r Result) {
+func (f future) Get() (r *Result) {
 	r = <-f
 	return
 }
 
 // Future#TryGet support
-func (f future) TryGet(ns time.Duration) (r Result, timeout bool) {
+func (f future) TryGet(ns time.Duration) (r *Result, timeout bool) {
 	select {
 	case r = <-f:
 		break
