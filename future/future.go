@@ -1,3 +1,16 @@
+// the future package define the semantics of asynchronous (future value)
+// data access.
+//
+// The API provided can be used as either generic or type-safe
+// manner (though the utility of the former case is limited to wrapping a
+// well-known channel/timer select.)
+//
+// TODO:
+// The package is to provide type-safe variants for builtin types.  Users
+// can (and are expected) to write their own variants for custom types (until
+// Go gets generics.)
+//
+// API design was strongly inspired by Java's Futures.
 package future
 
 import (
@@ -27,10 +40,14 @@ type Result struct {
 //
 // A future defines the interface to a Result that is provided asynchronously
 // per the standard practice semantics of a 'future'
+//
+// REVU(jh): split into FutureProvider and Future
 type Future interface {
 	// sets the value of the future Result
 	// if future Result was an error, v should be nil
 	// if e is nil, future Result is considered to be valid, even if v is nil
+	//
+	// REVU: should be for future provider
 	Set(v interface{}, e error)
 
 	// Blocks until the future Result is provided
@@ -46,7 +63,7 @@ type Future interface {
 // supporting the Future interface
 type future chan Result
 
-// Create a new future - channel depth is 1
+// Create a new future
 func NewFuture() future {
 	return make(future, 1)
 }
@@ -73,66 +90,3 @@ func (f future) TryGet(ns time.Duration) (r Result, timeout bool) {
 	return
 }
 
-/* 
-// idea about generics that came to mind based on above:
-// 
-// proposal for a new 'generic' special type interface{*} used
-// only in type definitions -- for now limited to func type defs.
-//
-// use of this type allows for compile-time matching at call site
-// Type cast errors remain runtime as with existing Go mechanisms
-//
-// example usage
-
-// v is the std. Go interface{} and nothing is changed here
-// *func is additional compile time syntax to prevent programmer error
-// returned result interface{*} is compile time syntax indicating generic type
-//
-type Converter func? (v interface{}) interface{?}
-
-// Runtime issues remain as they are with current Go.
-// But we hugely reduce syntactic noise of breaking KISS
-// with boiler plate type-safe implementations.
-//
-// ex: this function should be compile time mappable to Converter type.
-//
-func boolConverter (v interface{}) bool {
-	return v.(bool)
-}
-
-// and this statement should compile
-//
-var BooleanConverter Converter = boolConverter
-
-// ex continued --
-//      // call site compile-time check insures
-//      // receiver 'flag' is of correct expected type
-//
-//      var flag bool = BooleanConverter(foo)
-
-// extending idea for finer compile time control
-//
-type Converter func? (v interface{}) interface{specific-interface-type}
-
-// extending idea for structs
-//
-// define a generic struct
-type Result?T struct {
-	Value  interface{T}
-	Error  error
-}
-
-// we could then state
-//
-type BooleanResult Result?bool
-
-// which would map to
-type Boolean struct {
-  Value bool
-  Error error
-}
-
-type Boolean Generic?bool
-
-
-*/
