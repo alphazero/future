@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 )
+
 /* The Untyped implementation of Future (api) */
 
 // ----------------------------------------------------------------------------
@@ -22,7 +23,7 @@ type result_str struct {
 }
 
 // Support future.Result#Value() interface
-func (r *result_str) Value() interface {} {
+func (r *result_str) Value() interface{} {
 	if r.faulted {
 		return nil
 	}
@@ -37,7 +38,6 @@ func (r *result_str) Error() error {
 	return r.v.(error)
 }
 
-
 // This structure supports future.Future interface.
 type fobj_str struct {
 	// channel for sending the result
@@ -45,7 +45,6 @@ type fobj_str struct {
 	// flag to prevent multiple sets
 	finalized bool
 }
-
 
 // Creates a new untyped Future object to be managed by the caller (i.e. the provider)
 // and returns the future.Future interface to caller.
@@ -78,8 +77,9 @@ func (f *fobj_str) SetValue(v interface{}) error {
 }
 
 func (f *fobj_str) FutureResult() FutureResult {
-		return (frchan)(f.fchan)
+	return (frchan)(f.fchan)
 }
+
 // used for read only channel for consumer's end
 // supports future.FutureResult
 type frchan <-chan Result

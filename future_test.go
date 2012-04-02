@@ -1,8 +1,8 @@
 package future
 
 import (
-	"time"
 	"bytes"
+	"time"
 )
 
 // basic test data

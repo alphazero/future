@@ -5,8 +5,8 @@ package future
 
 import (
 	"bytes"
-	"testing"
 	"fmt"
+	"testing"
 )
 
 // test Future - all aspect, expect blocking Get
@@ -21,7 +21,6 @@ func TestFutureContract(t *testing.T) {
 	// using untyped future
 	future := NewUntypedFuture()
 	fr := future.FutureResult()
-
 
 	/* TEST timed call to uninitialized (not Set) future value,
 	 * expecting a timeout.
@@ -107,7 +106,7 @@ func TestFutureWithBlockingGet(t *testing.T) {
 }
 
 func TestFutureTimedBlockingGet(t *testing.T) {
-// tests timed blocking gets with no errors
+	// tests timed blocking gets with no errors
 
 	// prep data
 	// prep data
@@ -157,12 +156,13 @@ func TestFutureTimedBlockingGet(t *testing.T) {
 
 // dummy error type used for testing
 type FoobarError int64
+
 func (e FoobarError) Error() string {
 	return fmt.Sprintf("%d", e)
 }
 
 func TestFutureTimedBlockingGetWithError(t *testing.T) {
-// tests timed blocking gets with no errors
+	// tests timed blocking gets with no errors
 
 	// prep data
 	// prep data
