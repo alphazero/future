@@ -1,7 +1,7 @@
 // package alphaø is really a top-level catch all for various
 // go patterns that are suitable for general purpose usage and
 // emerge from my other go projects.
-package alphaø
+package alphazero
 
 import (
 	"future"
