@@ -1,4 +1,4 @@
-// the future package define the semantics of asynchronous (future value)
+// the fchan package define the semantics of asynchronous (fchan value)
 // data access.
 //
 // The API provided can be used as either generic or type-safe
@@ -18,86 +18,45 @@ import (
 )
 
 // ----------------------------------------------------------------------------
-// Futures
-// result and future result channel
+// Futures API
+// ----------------------------------------------------------------------------
 
-// Result defines a basic struct that either holds a generic (interface{}) reference
-// or an error reference. It is used to generically send and receive future results
-// through channels.
+type Result interface {
+	// Value result.
+	// Value of the Result - Value may be nil ONLY in case of Errors.
+	Value() interface{}
 
-type Result struct {
-	// Value of the Result.
-	// Value may be nil.
-	Value interface{}
-
-	// Error status of the future Result.
-	// if Error is NOT nil, then Value must be disregarded
-	// and Result considered to be an error
-	Error error
+	// Error result.
+	// if Error is NOT nil, then Value must be nil.
+	Error() error
 }
 
-// A future defines the interface to a Result that is provided asynchronously
-// per the standard practice semantics of a 'future'
+// The consumer end of the Future that is provided to the end-user.
+// This interface defines the semantics of asynchronous access to the
+// future result.
 //
-// REVU(jh): split into FutureProvider and Future
-type Future interface {
-	// sets the value of the future Result
-	// Future.Value will be nil
-	//
-	// REVU: should be for future provider
-	SetError(e error)
-
-	// sets an erro future Result
-	// Future.Error will be nil
-	// REVU: should be for future provider
-	SetValue(v interface{})
-
-	// Blocks until the future Result is provided
-	// REVU: should be future consumer
-	Get() (r *Result)
+type FutureResult interface {
+	// Blocks until the fchan Result is provided
+	Get() Result
 
 	// Blocking call with timeout.
 	// Returns timeout value of TRUE if ns Duration elapsed; r will be nil.
 	// Returns r value if value was provided before ns timeout duration elapsed.
-	// REVU: should be future consumer
-	TryGet(ns time.Duration) (r *Result, timeout bool)
+	TryGet(ns time.Duration) (r Result, timeout bool)
 }
 
-// ----------------------------------------------------------------------------
-// Core support
+type Future interface {
 
-// future type is a channel of future results
-// supporting the Future interface
-type future chan *Result
+	// sets the value of the fchan Result
+	// Future.Value will be nil
+	// A non-nil error is returned if already set.
+	SetError(e error) error
 
-// Create a new future
-func NewFuture() future {
-	return make(future, 1)
+	// sets an erro fchan Result - note that nil values are NOT permitted.
+	// Future.Error will be nil
+	// A non-nil error is returned if already set.
+	SetValue(v interface{}) error
+
+	// FutureResult is provided to the consumer of the future result.
+	FutureResult() FutureResult
 }
-
-// Future#Set support
-func (f future) SetError(e error) {
-	f <- &Result{nil, e}
-}
-// Future#Set support
-func (f future) SetValue(v interface{}) {
-	f <- &Result{v, nil}
-}
-
-// Future#Get support
-func (f future) Get() (r *Result) {
-	r = <-f
-	return
-}
-
-// Future#TryGet support
-func (f future) TryGet(ns time.Duration) (r *Result, timeout bool) {
-	select {
-	case r = <-f:
-		break
-	case <-time.After(ns):
-		timeout = true
-	}
-	return
-}
-
