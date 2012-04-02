@@ -42,11 +42,15 @@ type Result struct {
 // REVU(jh): split into FutureProvider and Future
 type Future interface {
 	// sets the value of the future Result
-	// if future Result was an error, v should be nil
-	// if e is nil, future Result is considered to be valid, even if v is nil
+	// Future.Value will be nil
 	//
 	// REVU: should be for future provider
-	Set(v interface{}, e error)
+	SetError(e error)
+
+	// sets an erro future Result
+	// Future.Error will be nil
+	// REVU: should be for future provider
+	SetValue(v interface{})
 
 	// Blocks until the future Result is provided
 	// REVU: should be future consumer
@@ -72,8 +76,12 @@ func NewFuture() future {
 }
 
 // Future#Set support
-func (f future) Set(v interface{}, e error) {
-	f <- &Result{v, e}
+func (f future) SetError(e error) {
+	f <- &Result{nil, e}
+}
+// Future#Set support
+func (f future) SetValue(v interface{}) {
+	f <- &Result{v, nil}
 }
 
 // Future#Get support

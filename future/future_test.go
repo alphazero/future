@@ -46,7 +46,6 @@ func TestFutureContract(t *testing.T) {
 	/* TEST timed call to uninitialized (not Set) future value,
 	 * expecting a timeout.
 	 * MUST return timeout of true
-	 * MUST return error value of nil
 	 * MUST return value of nil
 	 */
 	fvalue1, timedout1 := fb.TryGet(tspec.delay)
@@ -58,7 +57,7 @@ func TestFutureContract(t *testing.T) {
 	}
 
 	// set the future result
-	fb.Set(tspec.data, nil)
+	fb.SetValue(tspec.data)
 
 	/* TEST timed call to initialized (set) future value
 	 * expecting data, no error and no timeout
@@ -120,7 +119,7 @@ func TestFutureWithBlockingGet(t *testing.T) {
 	}()
 
 	// set the data
-	fb.Set(tspec.data, nil)
+	fb.SetValue(tspec.data)
 
 	<-sig
 
@@ -167,7 +166,7 @@ func TestFutureTimedBlockingGet(t *testing.T) {
 	}()
 
 	// set the data
-	fb.Set(tspec.data, nil)
+	fb.SetValue(tspec.data)
 
 	<-sig
 
@@ -226,8 +225,8 @@ func TestFutureTimedBlockingGetWithError(t *testing.T) {
 
 	// set the data
 	// note we are setting a future result with error.
-	var e FoobarError = FoobarError(errorCode) // an error
-	fb.Set(nil, e)
+	var e FoobarError = FoobarError(111) // an error
+	fb.SetError(e)
 
 	<-sig
 }
