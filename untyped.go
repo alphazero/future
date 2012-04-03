@@ -8,6 +8,9 @@ import (
 /* The Untyped implementation of Future (api) */
 
 // ----------------------------------------------------------------------------
+// Result Value
+// ----------------------------------------------------------------------------
+
 // This structure supports future.Result interface.
 //
 // a basic struct that either holds a generic (interface{}) reference
@@ -38,21 +41,21 @@ func (r *result_str) Error() error {
 	return r.v.(error)
 }
 
+// Support future.Result#Error() interface
+func (r *result_str) IsError() bool {
+	return r.faulted
+}
+
+// ----------------------------------------------------------------------------
+// Future Object handle
+// ----------------------------------------------------------------------------
+
 // This structure supports future.Future interface.
 type fobj_str struct {
 	// channel for sending the result
 	fchan chan Result
 	// flag to prevent multiple sets
 	finalized bool
-}
-
-// Creates a new untyped Future object to be managed by the caller (i.e. the provider)
-// and returns the future.Future interface to caller.
-func NewUntypedFuture() Future {
-	fo := new(fobj_str)
-	fo.finalized = false
-	fo.fchan = make(chan Result, 1)
-	return fo
 }
 
 // Future#Set support
@@ -80,6 +83,10 @@ func (f *fobj_str) FutureResult() FutureResult {
 	return (frchan)(f.fchan)
 }
 
+// ----------------------------------------------------------------------------
+// Future Result Channel
+// ----------------------------------------------------------------------------
+
 // used for read only channel for consumer's end
 // supports future.FutureResult
 type frchan <-chan Result
@@ -99,4 +106,20 @@ func (ch frchan) TryGet(ns time.Duration) (r Result, timeout bool) {
 		timeout = true
 	}
 	return
+}
+
+// ----------------------------------------------------------------------------
+// Functions
+// ----------------------------------------------------------------------------
+
+// (exp.)
+var UntypedBuilder Builder = NewUntypedFuture
+
+// Creates a new untyped Future object.
+// TODO: trap out of memory and return nil.
+func NewUntypedFuture() Future {
+	fo := new(fobj_str)
+	fo.finalized = false
+	fo.fchan = make(chan Result, 1)
+	return fo
 }
