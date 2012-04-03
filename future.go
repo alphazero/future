@@ -150,4 +150,4 @@ type Future interface {
 
 // A builder of Future objects.
 // Return of nil indicates a runtime error, e.g. out of memory
-type Builder func () Future
+type Builder func() Future
