@@ -52,15 +52,8 @@ func startClients() {
 				fresult := AsyncService(cid, time.Now())
 
 				// TryGet the future result
-				// interesting fact to note is that tuning this param does have
-				// an impact on throughput.
-				//
-				//				wait := time.Duration(_SERVICE_LATENCY * 100)
-				wait := time.Duration(0)
-				result, timeout = fresult.TryGet(wait)
+				result, timeout = fresult.TryGet(time.Duration(0))
 				if timeout {
-					// let's try blocking since we timedout
-					// to show that if timed out could try again
 					result = fresult.Get()
 				}
 
@@ -86,7 +79,7 @@ func startClients() {
 				}
 
 				// sleep for 1 ns to allow server to catch up
-				time.Sleep(1)
+				//				time.Sleep(1)
 			}
 		}(i)
 	}
