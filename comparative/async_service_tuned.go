@@ -28,7 +28,7 @@ var _SERVICE_LATENCY = int(1 * time.Nanosecond)
 var _NUM_CLIENTS = 10000
 var _LOAD_FACTOR = 10 * _NUM_CLIENTS
 var _REPORT_LIM = 10
-var _WAIT = time.Duration(1)
+var _WAIT = time.Duration(0)
 
 func startClients() {
 	for i := 0; i < _NUM_CLIENTS; i++ {
