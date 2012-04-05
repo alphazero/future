@@ -123,7 +123,6 @@ func (ch FutureResult) Get() (r Result) {
 func (ch FutureResult) TryGet(ns time.Duration) (r Result, timeout bool) {
 	select {
 	case r = <-ch:
-		break
 	case <-time.After(ns):
 		timeout = true
 	}
