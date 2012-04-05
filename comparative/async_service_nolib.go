@@ -5,8 +5,32 @@ import (
 	"time"
 )
 
-type future <-chan time.Duration
-type pchan chan<- time.Duration
+type future <-chan interface{}
+
+func (c future) Get() interface{} {
+	return <-c
+}
+
+func (c future) TryGet(wait time.Duration) (v interface{}, timeout bool) {
+	select {
+	case v = <-c:
+		break
+	case <-time.After(wait):
+		timeout = true
+	}
+	return
+}
+
+type pchan chan<- interface{}
+
+func (c pchan) Set(v interface{}) {
+	c <- v
+}
+
+func NewFuture() (future, pchan) {
+	c := make(chan interface{}, 1)
+	return future(c), pchan(c)
+}
 
 type Server chan<- *request
 
@@ -30,9 +54,7 @@ var _LOAD_FACTOR = 10 * _NUM_CLIENTS
 func AsyncService(cid int, t0 time.Time) future {
 
 	// create the Future chan
-	c := make(chan time.Duration, 1)
-	fch := future(c)
-	pch := pchan(c)
+	fch, pch := NewFuture()
 
 	// create an asyncRequest
 	// server will use future object to post its response
@@ -62,7 +84,7 @@ func StartServer() Server {
 				// result is just the delta of t0 of request and time now
 				t0 := request.arg
 				delta := time.Now().Sub(t0)
-				ch <- delta
+				ch.Set(delta)
 
 			default:
 				time.Sleep(1 * time.Nanosecond)
@@ -81,7 +103,7 @@ func startClients() {
 			var t0 time.Time = time.Now()
 			var delta time.Duration
 			var timeout bool
-			//			var result time.Duration
+			//			var result interface{}
 
 			for true {
 				// make the request and get the future.FutureResult
@@ -89,12 +111,16 @@ func startClients() {
 
 				// try get result
 
-				select {
-				case <-future:
-					break
-				case <-time.After(time.Duration(0)):
-					timeout = true
-					<-future // block for it
+//				select {
+//				case <-future:
+//					break
+//				case <-time.After(time.Duration(0)):
+//					timeout = true
+//					<-future
+//				}
+
+				_, timeout = future.TryGet(time.Duration(0)); if timeout {
+					future.Get()
 				}
 
 				// client 0 will dump its results as a sample
@@ -117,7 +143,7 @@ func startClients() {
 				}
 
 				// sleep for 1 ns to allow server to catch up
-				//				time.Sleep(1)
+				time.Sleep(1)
 			}
 		}(i)
 	}

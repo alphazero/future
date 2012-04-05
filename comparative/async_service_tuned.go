@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-type future <-chan interface{}
+type future <-chan time.Duration
 
-func (c future) Get() interface{} {
+func (c future) Get() time.Duration {
 	return <-c
 }
 
-func (c future) TryGet(wait time.Duration) (v interface{}, timeout bool) {
+func (c future) TryGet(wait time.Duration) (v time.Duration, timeout bool) {
 	select {
 	case v = <-c:
 		break
@@ -21,14 +21,14 @@ func (c future) TryGet(wait time.Duration) (v interface{}, timeout bool) {
 	return
 }
 
-type pchan chan<- interface{}
+type pchan chan<- time.Duration
 
-func (c pchan) Set(v interface{}) {
+func (c pchan) Set(v time.Duration) {
 	c <- v
 }
 
 func NewFuture() (future, pchan) {
-	c := make(chan interface{}, 1)
+	c := make(chan time.Duration, 1)
 	return future(c), pchan(c)
 }
 
@@ -103,13 +103,14 @@ func startClients() {
 			var t0 time.Time = time.Now()
 			var delta time.Duration
 			var timeout bool
-			//			var result interface{}
+			//			var result time.Duration
 
 			for true {
 				// make the request and get the future.FutureResult
 				future := AsyncService(cid, time.Now())
 
 				// try get result
+
 //				select {
 //				case <-future:
 //					break
@@ -118,8 +119,7 @@ func startClients() {
 //					<-future
 //				}
 
-				_, timeout = future.TryGet(time.Duration(0))
-				if timeout {
+				_, timeout = future.TryGet(time.Duration(0)); if timeout {
 					future.Get()
 				}
 
@@ -143,7 +143,7 @@ func startClients() {
 				}
 
 				// sleep for 1 ns to allow server to catch up
-				//				time.Sleep(1)
+				time.Sleep(1)
 			}
 		}(i)
 	}
