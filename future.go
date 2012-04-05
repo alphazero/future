@@ -141,7 +141,7 @@ type Future interface {
 	SetValue(v interface{}) error
 
 	// FutureResult is provided to the consumer of the future result.
-	FutureResult() FutureResult
+	Result() FutureResult
 }
 
 // ----------------------------------------------------------------------------

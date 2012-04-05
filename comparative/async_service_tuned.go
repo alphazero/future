@@ -3,135 +3,65 @@ package main
 import (
 	"log"
 	"time"
+
+//	"future"
 )
 
-type future <-chan time.Duration
+// using only language primitive and type-safe requests
+// (i.e. no interface{}).
+func main() {
 
-func (c future) Get() time.Duration {
-	return <-c
-}
+	server = StartServer()
+	startClients()
 
-func (c future) TryGet(wait time.Duration) (v time.Duration, timeout bool) {
-	select {
-	case v = <-c:
-		break
-	case <-time.After(wait):
-		timeout = true
-	}
-	return
-}
-
-type pchan chan<- time.Duration
-
-func (c pchan) Set(v time.Duration) {
-	c <- v
-}
-
-func NewFuture() (future, pchan) {
-	c := make(chan time.Duration, 1)
-	return future(c), pchan(c)
+	<-(make(chan int, 1))
 }
 
 type Server chan<- *request
-
-var server Server
-
 type request struct {
 	cid int
 	arg time.Time
-	ch  pchan
+	ch  chan<- time.Duration
 }
 
-// latency of each service request
-var _SERVICE_LATENCY = int(time.Microsecond)
+var server Server
 
-// number of concurrent clients
-var _NUM_CLIENTS = 10
-
-// load factor
+var _SERVICE_LATENCY = int(10 * time.Nanosecond)
+var _NUM_CLIENTS = 10000
 var _LOAD_FACTOR = 10 * _NUM_CLIENTS
-
-func AsyncService(cid int, t0 time.Time) future {
-
-	// create the Future chan
-	fch, pch := NewFuture()
-
-	// create an asyncRequest
-	// server will use future object to post its response
-	request := &request{cid, time.Now(), pch}
-
-	// queue the request
-	server <- request
-
-	// Return the FutureResult of the Future object to the caller
-	return fch
-}
-
-func StartServer() Server {
-	c := make(chan *request)
-	go func() {
-		for {
-			// process request queue or sleep if none pending
-			//
-			select {
-			case request := <-c:
-				// sleep for fake service latency
-				time.Sleep(time.Duration(_SERVICE_LATENCY) * time.Nanosecond)
-
-				// get the future object from the request
-				ch := request.ch
-
-				// result is just the delta of t0 of request and time now
-				t0 := request.arg
-				delta := time.Now().Sub(t0)
-				ch.Set(delta)
-
-			default:
-				time.Sleep(1 * time.Nanosecond)
-			}
-		}
-	}()
-	return c
-}
+var _REPORT_LIM = 10
+var _WAIT = time.Duration(1)
 
 func startClients() {
 	for i := 0; i < _NUM_CLIENTS; i++ {
 		go func(cid int) {
-			log.Printf("client %d started\n", cid)
 			var n = 0
 			var tocnt = 0
 			var t0 time.Time = time.Now()
 			var delta time.Duration
 			var timeout bool
-			//			var result time.Duration
 
 			for true {
-				// make the request and get the future.FutureResult
-				future := AsyncService(cid, time.Now())
+				response := make(chan time.Duration, 1)
+				request := &request{cid, time.Now(), response}
+				server <- request
 
-				// try get result
-
-//				select {
-//				case <-future:
-//					break
-//				case <-time.After(time.Duration(0)):
-//					timeout = true
-//					<-future
-//				}
-
-				_, timeout = future.TryGet(time.Duration(0)); if timeout {
-					future.Get()
+				// note: typically get would occur elsewhere and not immediately after request
+				select {
+				case <-response:
+				case <-time.After(_WAIT):
+					<-response
+					timeout = true
 				}
 
 				// client 0 will dump its results as a sample
 				if cid == 0 {
 					if timeout {
 						tocnt++
-					} else {
-						/* nop -- have the result */
 					}
+
 					n++
-					if n >= 1000 {
+					if n >= _REPORT_LIM {
 						delta = time.Now().Sub(t0)
 						log.Printf("(sample of %d) : %04d requests in %d nsec with %d timeouts (recovered)\n", _NUM_CLIENTS, n, delta, tocnt)
 						n = 0
@@ -141,18 +71,29 @@ func startClients() {
 						t0 = time.Now()
 					}
 				}
-
-				// sleep for 1 ns to allow server to catch up
-				time.Sleep(1)
 			}
 		}(i)
 	}
 }
 
-func main() {
+func StartServer() Server {
+	c := make(chan *request)
+	go func() {
+		for {
+			// process request queue or sleep if none pending
+			select {
+			case request := <-c:
+				// sleep for fake service latency
+				time.Sleep(time.Duration(_SERVICE_LATENCY) * time.Nanosecond)
 
-	server = StartServer()
-	startClients()
-
-	<-(make(chan int, 1))
+				// result is just the delta of t0 of request and time now
+				t0 := request.arg
+				delta := time.Now().Sub(t0)
+				request.ch <- delta
+			default:
+				time.Sleep(1 * time.Nanosecond)
+			}
+		}
+	}()
+	return c
 }

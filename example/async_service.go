@@ -14,7 +14,7 @@ func main() {
 	startClients()
 
 	flatch := future.NewUntypedFuture()
-	flatch.FutureResult().Get() // never returns ..
+	flatch.Result().Get() // never returns ..
 }
 
 // latency of each service request
@@ -100,7 +100,7 @@ func AsyncService(cid int, t0 time.Time) future.FutureResult {
 	server <- request
 
 	// Return the FutureResult of the Future object to the caller
-	return fobj.FutureResult()
+	return fobj.Result()
 }
 
 func StartServer() chan<- *asyncRequest {

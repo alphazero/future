@@ -20,7 +20,7 @@ func TestFutureContract(t *testing.T) {
 
 	// using untyped future
 	future := NewUntypedFuture()
-	fr := future.FutureResult()
+	fr := future.Result()
 
 	/* TEST timed call to uninitialized (not Set) future value,
 	 * expecting a timeout.
@@ -72,7 +72,7 @@ func TestFutureWithBlockingGet(t *testing.T) {
 
 	// using basic FutureBytes
 	future := NewUntypedFuture()
-	fr := future.FutureResult()
+	fr := future.Result()
 
 	// test go routine will block on Get until
 	// value is set.
@@ -114,7 +114,7 @@ func TestFutureTimedBlockingGet(t *testing.T) {
 
 	// using basic FutureBytes
 	future := NewUntypedFuture()
-	fr := future.FutureResult()
+	fr := future.Result()
 
 	// test go routine will block on Get until
 	// value is set or timeout expires
@@ -170,7 +170,7 @@ func TestFutureTimedBlockingGetWithError(t *testing.T) {
 
 	// using basic FutureBytes
 	future := NewUntypedFuture()
-	fr := future.FutureResult()
+	fr := future.Result()
 
 	// test go routine will block on Get until
 	// value is set or timeout expires

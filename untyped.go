@@ -79,7 +79,7 @@ func (f *fobj_str) SetValue(v interface{}) error {
 	return nil
 }
 
-func (f *fobj_str) FutureResult() FutureResult {
+func (f *fobj_str) Result() FutureResult {
 	return (frchan)(f.fchan)
 }
 
