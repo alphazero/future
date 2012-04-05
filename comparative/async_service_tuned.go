@@ -3,8 +3,6 @@ package main
 import (
 	"log"
 	"time"
-
-//	"future"
 )
 
 // using only language primitive and type-safe requests
@@ -26,7 +24,7 @@ type request struct {
 
 var server Server
 
-var _SERVICE_LATENCY = int(10 * time.Nanosecond)
+var _SERVICE_LATENCY = int(1 * time.Nanosecond)
 var _NUM_CLIENTS = 10000
 var _LOAD_FACTOR = 10 * _NUM_CLIENTS
 var _REPORT_LIM = 10
