@@ -2,7 +2,8 @@ package future
 
 import (
 	"errors"
-	"time"
+
+//	"time"
 )
 
 /* The Untyped implementation of Future (api) */
@@ -80,32 +81,7 @@ func (f *fobj_str) SetValue(v interface{}) error {
 }
 
 func (f *fobj_str) Result() FutureResult {
-	return (frchan)(f.fchan)
-}
-
-// ----------------------------------------------------------------------------
-// Future Result Channel
-// ----------------------------------------------------------------------------
-
-// used for read only channel for consumer's end
-// supports future.FutureResult
-type frchan <-chan Result
-
-// support for FutureResult#Get
-func (ch frchan) Get() (r Result) {
-	r = <-ch
-	return
-}
-
-// support for FutureResult#TryGet
-func (ch frchan) TryGet(ns time.Duration) (r Result, timeout bool) {
-	select {
-	case r = <-ch:
-		break
-	case <-time.After(ns):
-		timeout = true
-	}
-	return
+	return f.fchan
 }
 
 // ----------------------------------------------------------------------------

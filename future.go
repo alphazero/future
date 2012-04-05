@@ -110,18 +110,23 @@ type Result interface {
 // Hand-off Receive
 // ----------------------------------------------------------------------------
 
-// The consumer end of the Future that is provided to the end-user.
-// This interface defines the semantics of asynchronous access to the
-// future result.
-//
-type FutureResult interface {
-	// Blocks until the fchan Result is provided
-	Get() Result
+// FutureResult is a read-only channel of Result
+type FutureResult <-chan Result
 
-	// Blocking call with timeout.
-	// Returns timeout value of TRUE if ns Duration elapsed; r will be nil.
-	// Returns r value if value was provided before ns timeout duration elapsed.
-	TryGet(ns time.Duration) (r Result, timeout bool)
+// Blocking get
+func (ch FutureResult) Get() (r Result) {
+	r = <-ch
+	return
+}
+
+// Non-blocking get
+func (ch FutureResult) TryGet(ns time.Duration) (r Result, timeout bool) {
+	select {
+	case r = <-ch:
+	case <-time.After(ns):
+		timeout = true
+	}
+	return
 }
 
 // ----------------------------------------------------------------------------
