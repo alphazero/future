@@ -2,8 +2,6 @@ package future
 
 import (
 	"errors"
-
-//	"time"
 )
 
 /* The Untyped implementation of Future (api) */

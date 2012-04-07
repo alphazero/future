@@ -7,11 +7,11 @@ code (readability, loc) and performance impact.
 
 Run the future version:
 
-   go run async_service.go
+   go run async_service_futures.go
 
 Run the pure go channel version:
 
-   go run async_service_tuned.go
+   go run async_service_channels.go
 
 ## code
 
