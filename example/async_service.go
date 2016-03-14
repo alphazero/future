@@ -6,28 +6,25 @@ import (
 	"time"
 )
 
-// usage example -- creating and using an asynchronous service
-//
+// usage example
+// creating and using an asynchronous service
 func main() {
 
-	server = StartServer()
+	server = startServer()
 	startClients()
 
-	flatch := future.NewUntypedFuture()
-	flatch.Result().Get() // never returns ..
+	var never chan struct{}
+	<-never
 }
 
-// latency of each service request
-var _SERVICE_LATENCY = int(time.Microsecond)
-
-// number of concurrent clients
-var _NUM_CLIENTS = 10
-
-// load factor
-var _LOAD_FACTOR = 10 * _NUM_CLIENTS
+const (
+	latencyFactor = 1               // latency of each service request
+	numClients    = 10              // number of concurrent clients
+	loadFactor    = 10 * numClients // load factor
+)
 
 type asyncRequest struct {
-	cid  int
+	cid  uint
 	t0   time.Time
 	fobj future.Future
 }
@@ -37,49 +34,44 @@ var server chan<- *asyncRequest
 // --- the clients -----------------------------------
 
 func startClients() {
-	for i := 0; i < _NUM_CLIENTS; i++ {
-		go func(cid int) {
+	for i := uint(0); i < numClients; i++ {
+		go func(cid uint) {
 			log.Printf("client %d started\n", cid)
 			var n = 0
 			var tocnt = 0
 			var t0 time.Time = time.Now()
-			var delta time.Duration
-			var timeout bool
-			var result future.Result
 
-			for true {
+			for {
 				// make the request and get the future.FutureResult
-				fresult := AsyncService(cid, time.Now())
+				// note: calling time.Now in loop significantly impacts
+				//       performance. sampled results values do not reflect
+				//       actual future usage perf. cost.
+				fresult := callService(cid, time.Now())
 
 				// TryGet the future result
-				result, timeout = fresult.TryGet(time.Duration(0))
+				// note: tryget & then get on timeout is non-optimal
+				//       used here only to show api usage
+				result, timeout := fresult.TryGet(time.Microsecond * 10)
 				if timeout {
-					result = fresult.Get()
+					result = fresult.Get() // wait for it
 				}
 
 				// client 0 will dump its results as a sample
 				if cid == 0 {
-					if timeout {
+					switch {
+					case timeout:
 						tocnt++
-					} else {
-						if !result.IsError() {
-							/* nop -- have the result */
-						}
+					case result.IsError(): /* nop - just api demo */
 					}
 					n++
-					if n >= 1000 {
-						delta = time.Now().Sub(t0)
-						log.Printf("(sample of %d) : %04d requests in %d nsec with %d timeouts (recovered)\n", _NUM_CLIENTS, n, delta, tocnt)
+					if n == 1000 {
+						delta := time.Now().Sub(t0)
+						log.Printf("(sample of %d) : %04d requests in %d nsec with %d timeouts\n", numClients, n, delta, tocnt)
 						n = 0
 						tocnt = 0
-					}
-					if n == 0 {
 						t0 = time.Now()
 					}
 				}
-
-				// sleep for 1 ns to allow server to catch up
-				//				time.Sleep(1)
 			}
 		}(i)
 	}
@@ -87,7 +79,7 @@ func startClients() {
 
 // --- the service -----------------------------------
 
-func AsyncService(cid int, t0 time.Time) future.FutureResult {
+func callService(cid uint, t0 time.Time) future.FutureResult {
 
 	// create the Future object
 	fobj := future.NewUntypedFuture()
@@ -103,7 +95,7 @@ func AsyncService(cid int, t0 time.Time) future.FutureResult {
 	return fobj.Result()
 }
 
-func StartServer() chan<- *asyncRequest {
+func startServer() chan<- *asyncRequest {
 	c := make(chan *asyncRequest)
 	go func() {
 		for {
@@ -112,7 +104,7 @@ func StartServer() chan<- *asyncRequest {
 			select {
 			case request := <-c:
 				// sleep for fake service latency
-				time.Sleep(time.Duration(_SERVICE_LATENCY) * time.Nanosecond)
+				time.Sleep(time.Duration(latencyFactor) * time.Nanosecond)
 
 				// get the future object from the request
 				fobj := request.fobj
