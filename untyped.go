@@ -10,13 +10,13 @@ import (
 // Result Value
 // ----------------------------------------------------------------------------
 
-// This structure supports future.Result interface.
+// untyped supports ~generic future.Result interface.
 //
 // a basic struct that either holds a generic (interface{}) reference
 // or an error reference. It is used to generically send and receive fchan results
 // through channels.
 //
-type result_str struct {
+type result struct {
 	// v is a reference to either a result value or error value
 	v interface{}
 
@@ -24,24 +24,24 @@ type result_str struct {
 	faulted bool
 }
 
-// Support future.Result#Value() interface
-func (r *result_str) Value() interface{} {
+// future.Result#Value() interface
+func (r *result) Value() interface{} {
 	if r.faulted {
 		return nil
 	}
 	return r.v
 }
 
-// Support future.Result#Error() interface
-func (r *result_str) Error() error {
+// future.Result#Error() interface
+func (r *result) Error() error {
 	if !r.faulted {
 		return nil
 	}
 	return r.v.(error)
 }
 
-// Support future.Result#Error() interface
-func (r *result_str) IsError() bool {
+// future.Result#Error() interface
+func (r *result) IsError() bool {
 	return r.faulted
 }
 
@@ -49,32 +49,28 @@ func (r *result_str) IsError() bool {
 // Future Object handle
 // ----------------------------------------------------------------------------
 
-// This structure supports future.Future interface.
+// supports future.Future interface.
 type fobj_str struct {
-	// channel for sending the result
-	fchan chan Result
-	// flag to prevent multiple sets
-	finalized bool
+	fchan     chan Result // channel for sending the result
+	finalized bool        // flag to prevent multiple sets
 }
 
 // Future#Set support
 func (f *fobj_str) SetError(e error) error {
 	if f.finalized {
-		// TODO: log this
 		return errors.New("illegal state @ setError: already set")
 	}
 	f.finalized = true
-	f.fchan <- &result_str{e, true}
+	f.fchan <- &result{e, true}
 	return nil
 }
 
 // Future#Set support
 func (f *fobj_str) SetValue(v interface{}) error {
 	if f.finalized {
-		// TODO: log this
 		return errors.New("illegal state @ setError: already set")
 	}
-	f.fchan <- &result_str{v, false}
+	f.fchan <- &result{v, false}
 	return nil
 }
 
@@ -90,7 +86,6 @@ func (f *fobj_str) Result() FutureResult {
 var UntypedBuilder Builder = NewUntypedFuture
 
 // Creates a new untyped Future object.
-// TODO: trap out of memory and return nil.
 func NewUntypedFuture() Future {
 	fo := new(fobj_str)
 	fo.finalized = false
