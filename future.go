@@ -138,8 +138,4 @@ type Provider interface {
 	// Future.Error will be nil
 	// A non-nil error is returned if already set.
 	SetValue(v interface{}) error
-
-	// Result is provided to the consumer of the future result.
-	// REVU: why here?
-	Result() Result
 }
