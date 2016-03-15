@@ -23,12 +23,6 @@ const (
 	loadFactor    = 10 * numClients // load factor
 )
 
-type asyncRequest struct {
-	cid  uint
-	t0   time.Time
-	fobj future.Future
-}
-
 var server chan<- *asyncRequest
 
 // --- the clients -----------------------------------
@@ -79,7 +73,13 @@ func startClients() {
 
 // --- the service -----------------------------------
 
-func callService(cid uint, t0 time.Time) future.FutureResult {
+type asyncRequest struct {
+	cid  uint
+	t0   time.Time
+	fobj interface{}
+}
+
+func callService(cid uint, t0 time.Time) future.Future {
 
 	// create the Future object
 	fobj := future.NewUntypedFuture()
@@ -92,7 +92,7 @@ func callService(cid uint, t0 time.Time) future.FutureResult {
 	server <- request
 
 	// Return the FutureResult of the Future object to the caller
-	return fobj.Result()
+	return fobj
 }
 
 func startServer() chan<- *asyncRequest {
@@ -112,7 +112,7 @@ func startServer() chan<- *asyncRequest {
 				// result is just the delta of t0 of request and time now
 				t0 := request.t0
 				delta := time.Now().Sub(t0)
-				fobj.SetValue(delta)
+				fobj.(future.Provider).SetValue(delta)
 
 			default:
 				time.Sleep(1 * time.Nanosecond)

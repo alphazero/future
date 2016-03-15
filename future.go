@@ -90,9 +90,25 @@ import (
 )
 
 // ----------------------------------------------------------------------------
-// Result objects
+// Future
 // ----------------------------------------------------------------------------
 
+// future.Future defines the api of future objects. Objects supporting this
+// interface are created by the async function/service and returned to call site.
+type Future interface {
+	// Blocking get waits until future.Result is available.
+	Get() (r Result)
+
+	// Returns result or timeouts after specified wait duration
+	TryGet(wait time.Duration) (r Result, timeout bool)
+}
+
+// ----------------------------------------------------------------------------
+// Future Result
+// ----------------------------------------------------------------------------
+
+// future.Result defines the type-generic future value results returned via a
+// future.Future.
 type Result interface {
 	// Value result.
 	// Value of the Result - Value may be nil ONLY in case of Errors.
@@ -107,33 +123,11 @@ type Result interface {
 }
 
 // ----------------------------------------------------------------------------
-// Hand-off Receive
+// Future Provider
 // ----------------------------------------------------------------------------
 
-// FutureResult is a read-only channel of Result
-type FutureResult <-chan Result
-
-// Blocking get
-func (ch FutureResult) Get() (r Result) {
-	r = <-ch
-	return
-}
-
-// Non-blocking get
-func (ch FutureResult) TryGet(ns time.Duration) (r Result, timeout bool) {
-	select {
-	case r = <-ch:
-	case <-time.After(ns):
-		timeout = true
-	}
-	return
-}
-
-// ----------------------------------------------------------------------------
-// Hand-off owner/sender
-// ----------------------------------------------------------------------------
-
-type Future interface {
+// future.Provider defines the api for use by the provider of future.Results
+type Provider interface {
 
 	// sets the value of the fchan Result
 	// Future.Value will be nil
@@ -145,14 +139,7 @@ type Future interface {
 	// A non-nil error is returned if already set.
 	SetValue(v interface{}) error
 
-	// FutureResult is provided to the consumer of the future result.
-	Result() FutureResult
+	// Result is provided to the consumer of the future result.
+	// REVU: why here?
+	Result() Result
 }
-
-// ----------------------------------------------------------------------------
-// API (functions)
-// ----------------------------------------------------------------------------
-
-// A builder of Future objects.
-// Return of nil indicates a runtime error, e.g. out of memory
-type Builder func() Future
