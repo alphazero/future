@@ -64,19 +64,9 @@ func NewUntypedFuture() *futureResult {
 // ______________________________________________________________________
 // support for future.Future
 
-// REVU: we don't want to leak channels, so we close channels on successful
-// Get | TryGet. But that creates the possibility of receiver of future.Futures
-// to try Get | TryGet again (e.g. a user bug) and gets will panic.
-//
-// options:
-// (1) enhance semantics to return error on Get | TryGet (REVU: cumbersome)
-// (2) enhance type to store value results (REVU: space & code complexity)
-// (3) enhance docs to make this quite explicit and pass the buck (REVU: optimal /g )
-
 // interface: future.Future#Get
 func (p *futureResult) Get() (r Result) {
 	r = <-(p.rchan)
-	close(p.rchan)
 	return
 }
 
@@ -84,7 +74,6 @@ func (p *futureResult) Get() (r Result) {
 func (p *futureResult) TryGet(ns time.Duration) (r Result, timeout bool) {
 	select {
 	case r = <-(p.rchan):
-		defer close(p.rchan)
 	case <-time.After(ns):
 		timeout = true
 	}
@@ -98,19 +87,20 @@ func (f *futureResult) SetError(e error) error {
 	if f.finalized {
 		return errors.New("illegal state @ setError: already set")
 	}
-	f.finalized = true
-	f.rchan <- &result{e, true}
+	f.set(&result{e, true})
 	return nil
 }
 
 func (f *futureResult) SetValue(v interface{}) error {
 	if f.finalized {
-		return errors.New("illegal state @ setError: already set")
+		return errors.New("illegal state @ setValue: already set")
 	}
-	f.rchan <- &result{v, false}
+	f.set(&result{v, false})
 	return nil
 }
 
-func (f *futureResult) Result() Result {
-	return <-f.rchan
+func (f *futureResult) set(r Result) {
+	f.rchan <- r
+	f.finalized = true
+	close(f.rchan)
 }

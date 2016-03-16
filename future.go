@@ -16,73 +16,124 @@
 //
 // -
 //
-//  Spec-Lite and Usage:
+// Spec-Lite and Usage:
 //
-//  Futures are designed for asynchronous hand-off of a reference between 1
-//  or 2 (typically 2) 'threads' of execution.  Conceptually, it is nothing
-//  more than wrapping a standard pattern of using a channel (of size 1) to
-//  transfer a reference or a value.  API is designed for minimal overhead
-//  and delegates any required type-safety to the programmer user.
+// Futures are designed for asynchronous hand-off of a reference between 1
+// or 2 (typically 2) 'threads' of execution.  Conceptually, it is nothing
+// more than wrapping a standard pattern of using a channel (of size 1) to
+// transfer a reference or a value.  API is designed for minimal overhead
+// and delegates any required type-safety to the programmer user.
 //
-//  The hand-off semantics are defined by the Future interface, which is
-//  expected by design to be 'owned' by the party making promises of delivery
-//  'in future' to the other party.
+// The hand-off semantics are defined by the 'Future', and 'Provider' interfaces,
+// where it is expected that the instantiator of future objects is the entity
+// that has exposed an API returning future.Future(s).
 //
-//  The Future object provides the basic check of enforcing a one time only
-//  setting of the future results (to either a value or an error reference).
-//  But it does (and can) not prevent other expected usage constraints.
+// The general pattern of use is as follows:
 //
-//  The holder of the reference ot the Future object is expected to not leak the
-//  reference to the Future
+// The implementation of a function | interface-method returning future.Future
+// will instantiate a type supporting the future.Future & future.Provider
+// interfaces.  For example:
 //
-//  The 'receiver' of the data interacts in the hand-off via the FutureResult
-//  interface.  A reference to this interface can be obtained from the Future
-//  interface (above).  This party can use either the blocking or non-blocking
-//  with timeout functions of FutureResult interface to obtain the value (or
-//  a application specific error object minimally supporting Go builtin Error
-//  interface.
+//     func AsyncSomething(...) (future.Future, ...)
 //
-//  The blocking FutureResult#Get will block until the promised results are
-//  provided.  As of now, it is unspecified if this function should support
-//  interrupts or not.
+// This function | interface-method has the role of the future.Provider.
+// For example:
 //
-//  The non-blocking FutureResult#TryGet(timeout in nano-seconds) must return
-//  no later than after the timeout duration has elapsed after making the call,
-//  in the idealized case.  It may return before the timeout duration has elapsed
-//  with a result.
+//     // here using the future package's reference implementation
+//     func RemoteServiceFoo (...) (response future.Future, ...) {
+//          response = future.NewUntypedFuture()
 //
-//  The behavior of FutureResult is only specified given the constraint that
-//  the receiving party adheres to the following:
+//          // async func invoke the service call
+//          // using the future.Provider interface to fulfill the
+//          // future contract
+//          go func(future future.Provider) {
+//              // call the remote service
+//              svcresp, e := invokeRemoteService(...);
+//              switch {
+//              case e != nil:
+//                  future.SetError(e)
+//              default:
+//                  future.SetValue(svcresp)
+//              }
+//          }(response)
+//     }
+//
+// The consumer of the function | interface-method returning future.Future
+// objects can (a) fire-and-forgetall-but-error, (b) block until results are
+// provided, or (c) wait for a specified time (for cases such as meeting SLAs):
+//
+//       // ... call site to an async function | interface-method
+//       futureResponse, ... := RemoteServiceFoo(...)
+//
+//       ----------------------------
+//
+//       // idiom (a)
+//       // fire and forgetall but the error
+//       go func(future future.Future, errout io.Writer ) {
+//           result := future.Get()
+//           if result.IsError() {
+//               e := result.Error()
+//               errout.Write(e.Error())
+//           }
+//       }(futureResponse, os.Stderr)
+//
+//       ----------------------------
+//
+//       // idiom (b)
+//       // block until future results provided
+//       result := futureResponse.Get()
+//       if result.IsError() {
+//           /* handle error */
+//       } else {
+//           /* process response */
+//           response := result.Value().(ExpectedResponseTypeHere)
+//           ...
+//       }
+//
+//
+//       ----------------------------
+//
+//       // idiom (c)
+//       // wait for a given duration (per your SLA)
+//       result, timeout := futureResponse.TryGet(slaMaxLatencyDuration)
+//       if timeout {
+//           /* handle failture to meet SLA case */
+//           ...
+//           return
+//       }
+//       // congrats. Got the reponse. so now just process it per (b)
+//       if result.IsError() {
+//           /* handle error */
+//       } else {
+//           /* process response */
+//           response := result.Value().(ExpectedResponseTypeHere)
+//           ...
+//       }
+//
+// The behavior of future.Future is _only specified_ given the constraint that
+// the receiving party adheres to the following:
 //
 //  a) repeated subsequent calls to FutureResult#TryGet can be made if the
 //     calls result in timeouts.
 //
-//  b) FutureResult#Get must only be called once.  It may be called in isolation
+//  b) future.Future#Get must only be called once.  It may be called in isolation
 //     or can be called after one or more calls to TryGet, per timeout spec of
-//     `a` above).  Any other pattern of use is unspecified.
+//     `a` above).  Any other pattern of use is unspecified and is considered
+//     a programmer error.
 //
+// The Result interface reference obtained by the receiver per above is conceptually
+// a 'union' between an 'error' or 'value' (both regardless typed as interface{}).
 //
-//  The Result interface reference obtained by the receiver per above is conceptually
-//  a 'union' between an 'error' or 'value' (both regardless typed as interface{}).
+// This package makes no assumptions about the ownership and life-cycle of the
+// references (whether error or value) handed off via the futures, or for that
+// matter, the references to Future objects themselves.  Typically, the life-cycle
+// of all objects created are close to the event bounds of creating the Future and
+// obtaining either an error or value result, but that is entirely up to the
+// user of the package.  The untyped implementation does not maintain any references
+// to the objects it creates.
 //
-//  This package makes no assumptions about the ownership and life-cycle of the
-//  references (whether error or value) handed off via the futures, or for that
-//  matter, the references to Future objects themselves.  Typically, the life-cycle
-//  of all objects created are close to the event bounds of creating the Future and
-//  obtaining either an error or value result, but that is entirely up to the
-//  user of the package.  The untyped implementation does not maintain any references
-//  to the objects it creates.
-//
-//  -
-//
-//  Usage in the minimal sense is quite trivial and entirely in line with the
-//  idiomatic usage of goroutines and channels.  Typically, one goroutine is
-//  handing off read only references to (size 1) channels which they are expected
-//  to dequeue via a select construct.  Using Future, the reference handed off is
-//  a reference to the FutureResult instead of a bare channel, with enhanced
-//  (and extensible) semantics.  And instead of adding the result directly to
-//  a channel, using futures the provider does via the Future interface api.
-//
+// Compliant implentations are required to release any rosources associated with a
+// future.Future object on a successful future.Future#Get | future.Future#TryGet.
 package future
 
 import (
